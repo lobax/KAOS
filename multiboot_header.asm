@@ -4,7 +4,7 @@ header_start:
     dd 0xe85250d6               ; magic number (multiboot 2)
     dd 0                        ; i386 architecture 
     dd header_end - header_start    ; header length
-    dd - (0xe85250d6 + 0 + (header_end - header_start)) ; checksum
+    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start)) ; checksum
 
     ; optional mutiboot tags
 
