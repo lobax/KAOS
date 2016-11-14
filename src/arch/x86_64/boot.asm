@@ -85,9 +85,42 @@ check_long_mode:
 .no_long_mode: 
     mov al, "2"
     jmp error
+set_up_page_tables: 
+    ; map first p4 entry to p3 table
+    mov eax, p3_table
+    or eax, 0b11            ; present + writable
+    mov [p4_table], eax
+
+    ; map first p3 entry to p2 table
+    mov eax, p2_table
+    or eax, 0b11            ; present + writable
+    mov [p3_table], eax
+
+    ; map each p2 entry to a huge 2MiB page
+    mov ecx, 0;             ; counter variable
+
+.map_p2_table:
+    ; map ecx-th p2 entry to a huge page that starts at adress 2Mib*ecx
+    mov eax, 0x200000       ; 2 MiB
+    mul ecx                 ; start adress of ecx-th page
+    or eax, 0b10000011      ; present + writable + huge
+    mov [p2_table + ecx * 8], eax ; map ecx-th entry
+
+    inc ecx                 ; increase counter
+    cmp ecx, 512            ; if counter == 512, the whole p2 table is mapped
+    jne .map_p2_table       ; else map the next entry
+
+    ret
 
 
 section .bss
+align 4096
+p4_table: 
+    resb 4096
+p3_table:
+    resb 4096
+p2_table: 
+    resb 4096
 stack_bottom: 
     resb 64
 stack_top: 

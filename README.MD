@@ -1,5 +1,5 @@
 # KAOS 
-## Kristian Alvare OS
+## Kristian Alvarez OS
 
 This is a simple operating system built in Rust, made for the course in Operating Systems (ID2206) at KTH. 
 

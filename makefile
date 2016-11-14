@@ -10,7 +10,7 @@ assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 
 .PHONY: all clean run iso
 
-all: $(kernel)
+all: $(iso)
 
 clean:
 	@rm -r build
@@ -18,7 +18,7 @@ clean:
 run: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso)
 
-iso: $(iso)
+kernel: $(kernel)
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub
