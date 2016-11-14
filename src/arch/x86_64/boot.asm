@@ -3,12 +3,15 @@ section .text
 bits 32
 start: 
     mov esp, stack_top
-
+    mov dword [0xb8000], 0x0f410f4b 
+    mov dword [0xb8004], 0x0f530f4f 
     call check_multiboot
     call check_cpuid
     call check_long_mode
     ; print `OK` to scree
-    mov dword [0xb8000], 0x2f4b2f4f
+    mov dword [0xb80a0], 0x0f650f54 
+    mov dword [0xb80a4], 0x0f740f73 
+    mov dword [0xb80a8], 0x2f4b2f4f
     hlt
 
 ; Prints 'ERR: ' and the given error code to the screen. 
@@ -59,7 +62,7 @@ check_cpuid:
     ; Compare EAX and ECX. If they are equal then that means the bit
     ; wasn't flipped, and CPUID isn't supported 
     cmp eax, ecx
-    je .no_cupid
+    je .no_cpuid
     ret
 .no_cpuid: 
     mov al, "1"
