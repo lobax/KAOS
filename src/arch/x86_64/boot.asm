@@ -1,17 +1,28 @@
 global start
+extern long_mode_start
 section .text
 bits 32
 start: 
     mov esp, stack_top
-    mov dword [0xb8000], 0x0f410f4b 
-    mov dword [0xb8004], 0x0f530f4f 
     call check_multiboot
     call check_cpuid
     call check_long_mode
-    ; print `OK` to scree
-    mov dword [0xb80a0], 0x0f650f54 
-    mov dword [0xb80a4], 0x0f740f73 
-    mov dword [0xb80a8], 0x2f4b2f4f
+    
+    call set_up_page_tables
+    call enable_paging
+    
+    call set_up_SSE
+    
+    ; load the 64-bit GDT
+    lgdt [gdt64.pointer]
+
+    ; update selectors
+    mov ax, gdt64.data
+    mov ss, ax
+    mov ds, ax
+    mov es, ax
+
+    jmp gdt64.code:long_mode_start
     hlt
 
 ; Prints 'ERR: ' and the given error code to the screen. 
@@ -112,6 +123,50 @@ set_up_page_tables:
 
     ret
 
+enable_paging: 
+    ; load P4 to cr3 register
+    mov eax, p4_table
+    mov cr3, eax
+
+    ; enable PAE-flag in cr4 (Physical Adress Extension) 
+    mov eax, cr4
+    or eax, 1 << 5
+    mov cr4, eax
+
+    ; set the long mode bit in the EFER MSR (model specific register) 
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, 1 << 8
+    wrmsr
+
+    ; enable paging in the cr0 register
+    mov eax, cr0
+    or eax, 1 << 31
+    mov cr0, eax
+
+    ret
+
+set_up_SSE: 
+    ; Check for SSE
+    mov eax, 0x1
+    cpuid
+    test edx, 1<<25
+    jz .no_SSE
+
+    ; Enable SSE
+    mov eax, cr0
+    and ax, 0xfffb          ; clear coprocessor emulation CR0.EM
+    or ax, 0x2              ; set coprocessor monitoring CR0.MP
+    mov cr0, eax
+    mov eax, cr4
+    or ax, 3 << 9           ; set CR4.OSFXSR and CR$.OSXMMEXCPT at the same time
+    mov cr4, eax
+
+    ret
+.no_SSE: 
+    mov al, "a" 
+    jmp error
+
 
 section .bss
 align 4096
@@ -124,3 +179,14 @@ p2_table:
 stack_bottom: 
     resb 64
 stack_top: 
+
+section .rodata
+gdt64:
+    dq 0                    ; zero entry
+.code equ $ - gdt64;
+    dq (1<<44) | (1<<47) | (1<<41) | (1<<43) | (1<<53) ; code segment
+.data equ $ - gdt64
+    dq (1<<44) | (1<<47) | (1<<41) ; data segment
+.pointer: 
+    dw $ - gdt64 -1
+    dq gdt64
