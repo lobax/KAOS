@@ -1,17 +1,22 @@
 #![feature(lang_items)]
+#![feature(const_fn, unique)]
 #![no_std]
 
 extern crate rlibc;
+extern crate volatile;
+
+mod vga_buffer;
 
 #[no_mangle]
 pub extern fn rust_main() {
-    let title = b"8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
+    let title = "8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
     let color_byte = 0x0c; // Light red foreground, black background
     let name_color_byte = 0xf0; 
     let name = b"Kristian Alvarez OS"; 
-    print(title, &color_byte, 10, 26); 
-    print(name, &name_color_byte, 15, 30); 
+    // print(title, &color_byte, 10, 26); 
+    // print(name, &name_color_byte, 15, 30); 
 
+    vga_buffer::print(title);
     loop{}
 } 
 
