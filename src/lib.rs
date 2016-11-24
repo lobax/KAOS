@@ -4,21 +4,33 @@
 
 extern crate rlibc;
 extern crate volatile;
+extern crate spin;
+extern crate multiboot2;
 
+#[macro_use]
 mod vga_buffer;
+mod fib;
 
 #[no_mangle]
-pub extern fn rust_main() {
-    let title = "8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
+pub extern fn rust_main(multiboot_information_adress: usize) {
+    let title = b"8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
     let color_byte = 0x0c; // Light red foreground, black background
-    let name_color_byte = 0xf0; 
-    let name = b"Kristian Alvarez OS"; 
-    // print(title, &color_byte, 10, 26); 
-    // print(name, &name_color_byte, 15, 30); 
 
-    vga_buffer::print(title);
+    // Home made print function
+    print(title, &color_byte, 10, 26); 
+    
+    let boot_info = unsafe { multiboot2::load(multiboot_information_adress) }; 
+    let memory_map_tag = boot_info.memory_map_tag()
+             .expect("Memory map tag required"); 
+    println!("Memory areas:");
+    for area in memory_map_tag.memory_areas() {
+        println!("  Start: 0x{:x}, length: 0x{:x}",
+                 area.base_addr, area.length); 
+    }
+
+    
     loop{}
-} 
+}
 
 fn print(string: &[u8], color: &u8, mut row: u64, column: u64) {
     let mut col = column; 
@@ -45,7 +57,11 @@ fn is_new_line(val: &u8) -> bool {
 }
 
 #[lang = "eh_personality"] extern fn eh_personality() {} 
-#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{}}
+#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {
+    let color_byte = 0x0c; // Light red foreground, black background
+    print(b"KERNEL PANIC",&color_byte, 0,0);      
+    loop{}
+}
 
 #[allow(non_snake_case)]
 #[no_mangle]

@@ -1,3 +1,7 @@
+use spin::Mutex; 
+use volatile::Volatile;
+use core::ptr::Unique; 
+use core::fmt;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +25,17 @@ pub enum Color {
     White       = 15,
 }
 
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        $crate::vga_buffer::print(format_args!($($arg)*));
+    });
+}
+
+macro_rules! println {
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ColorCode(u8);
 
@@ -40,15 +55,14 @@ struct ScreenChar{
 const BUFFER_HEIGHT: usize = 25; 
 const BUFFER_WIDTH: usize = 80; 
 
-use volatile::Volatile;
 struct Buffer { 
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
-use core::ptr::Unique; 
 
 pub struct Writer { 
     column_position: usize,
+    row_position: usize,
     color_code: ColorCode,
     buffer: Unique<Buffer>,
 }
@@ -61,7 +75,7 @@ impl Writer {
                 if self.column_position >= BUFFER_WIDTH { 
                     self.new_line();
                 }
-                let row = BUFFER_HEIGHT -1;
+                let row = self.row_position;
                 let col = self.column_position; 
 
                 let color_code = self.color_code; 
@@ -69,50 +83,55 @@ impl Writer {
                     ascii_character: byte,
                     color_code: color_code,
                 });
-                self.column_position += 1; 
+                self.column_position += 1;
             }
         }
     }
-    pub fn write_str(&mut self, s: &str) { 
-        for byte in s.bytes() { 
-            self.write_byte(byte)
-        }
-    }
-
     fn buffer(&mut self) -> &mut Buffer { 
         unsafe{ self.buffer.get_mut() }
     }
 
     fn new_line (&mut self) { 
-        for row in 1..BUFFER_HEIGHT { 
-            for col in 1..BUFFER_WIDTH { 
-                let buffer = self.buffer(); 
-                let character = buffer.chars[row][col].read(); 
-                buffer.chars[row -1][col].write(character); 
+        if self.row_position < BUFFER_HEIGHT -1 { 
+            self.row_position += 1; 
+            self.column_position = 0; 
+        } 
+        else { 
+            for row in 1..BUFFER_HEIGHT { 
+                for col in 0..BUFFER_WIDTH { 
+                    let buffer = self.buffer(); 
+                    let character = buffer.chars[row][col].read(); 
+                    buffer.chars[row-1][col].write(character); 
+                }
             }
+            self.clear_row(BUFFER_HEIGHT - 1); 
+            self.column_position = 0; 
         }
-        self.clear_row(BUFFER_HEIGHT-1); 
-        self.column_position = 0; 
     }
 
     fn clear_row(&mut self, row: usize) { 
-        // todo
+        let blank = ScreenChar { 
+            ascii_character: b' ', 
+            color_code: self.color_code,
+        }; 
+        for col in 0..BUFFER_WIDTH { 
+            self.buffer().chars[row][col].write(blank); 
+        }
     }
 }
 
 
-pub fn print(s : &str) {
+pub fn print(args: fmt::Arguments) {
     use core::fmt::Write;
-    let mut writer = Writer {
-        column_position: 0,
-        color_code: ColorCode::new(Color::LightGreen, Color::Black),
-        buffer: unsafe { Unique::new(0xb8000 as *mut _) },
-    };
-
-    writer.write_str(s);
+    WRITER.lock().write_fmt(args).unwrap();
 }
 
-use core::fmt;
+pub fn clear_screen() { 
+    for _ in 0..BUFFER_HEIGHT { 
+        println!(""); 
+    }
+}
+
 
 impl fmt::Write for Writer { 
     fn write_str(&mut self, s: &str) -> fmt::Result { 
@@ -124,8 +143,11 @@ impl fmt::Write for Writer {
 }
         
 
-
-
-
+pub static WRITER: Mutex<Writer> = Mutex::new(Writer { 
+    column_position: 0, 
+    row_position: 0,
+    color_code: ColorCode::new(Color::LightGreen, Color::Black), 
+    buffer: unsafe { Unique::new(0xb8000 as *mut _)},
+});
 
 
