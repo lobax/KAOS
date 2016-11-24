@@ -22,23 +22,11 @@ pub extern fn rust_main(multiboot_information_adress: usize) {
     let memory_map_tag = boot_info.memory_map_tag()
              .expect("Memory map tag required"); 
 
-
-    let elf_sections_tag = boot_info.elf_sections_tag()
-        .expect("Elf-sections tag required"); 
-
-    let kernel_start = elf_sections_tag.sections().map(|s| s.addr)
-            .min().unwrap();
-    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size)
-            .max().unwrap(); 
-
-    let multiboot_start = multiboot_information_adress; 
-    let multiboot_end = multiboot_start + (boot_info.total_size as usize); 
-
-    println!("Kernel start adress: 0x{:x}, end adress: 0x{:x}",
-             kernel_start, kernel_end);
-    println!("Multiboot start adress: 0x{:x}, end adress: 0x{:x}",
-             multiboot_start, multiboot_end);
-
+    println!("Memory areas:");
+    for area in memory_map_tag.memory_areas() {
+        println!("  Start: 0x{:x}, length: 0x{:x}",
+                 area.base_addr, area.length); 
+    }
 
     loop{}
 }
@@ -84,3 +72,4 @@ extern fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
 pub extern "C" fn _Unwind_Resume() -> ! { 
     loop {} 
 }
+

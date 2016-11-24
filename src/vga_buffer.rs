@@ -68,6 +68,10 @@ pub struct Writer {
 }
 
 impl Writer {
+    pub fn set_color(&mut self, color : Color) { 
+        self.color_code = ColorCode::new(color, Color::Black); 
+    }
+
     pub fn write_byte(&mut self, byte: u8) { 
         match byte { 
             b'\n' => self.new_line(),
@@ -132,6 +136,9 @@ pub fn clear_screen() {
     }
 }
 
+pub fn set_text_color(color: Color) { 
+    WRITER.lock().set_color(color);
+}
 
 impl fmt::Write for Writer { 
     fn write_str(&mut self, s: &str) -> fmt::Result { 
