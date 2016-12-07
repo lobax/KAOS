@@ -98,6 +98,10 @@ check_long_mode:
     mov al, "2"
     jmp error
 set_up_page_tables: 
+    mov eax, p4_table
+    or eax, 0b11 ; present + writable
+    mov [p4_table + 511 * 8], eax
+
     ; map first p4 entry to p3 table
     mov eax, p3_table
     or eax, 0b11            ; present + writable
@@ -178,7 +182,7 @@ p3_table:
 p2_table: 
     resb 4096
 stack_bottom: 
-    resb 4096
+    resb 2*4096
 stack_top: 
 
 section .rodata

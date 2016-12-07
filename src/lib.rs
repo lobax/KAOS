@@ -6,9 +6,15 @@ extern crate rlibc;
 extern crate volatile;
 extern crate spin;
 extern crate multiboot2;
+#[macro_use]
+extern crate bitflags;
+extern crate x86;
 
 #[macro_use]
 mod vga_buffer;
+mod memory;
+
+use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_adress: usize) {
@@ -39,9 +45,18 @@ pub extern fn rust_main(multiboot_information_adress: usize) {
     println!("Multiboot start adress: 0x{:x}, end adress: 0x{:x}",
              multiboot_start, multiboot_end);
 
+    let mut frame_allocator = memory::AreaFrameAllocator::new(
+        kernel_start as usize, kernel_end as usize, multiboot_start, 
+        multiboot_end, memory_map_tag.memory_areas()); 
+    memory::test_paging(&mut frame_allocator); 
+
 
     loop{}
 }
+
+
+
+    
 
 fn print(string: &[u8], color: &u8, mut row: u64, column: u64) {
     let mut col = column; 

@@ -11,10 +11,10 @@ assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 
 target ?= $(arch)-unknown-linux-gnu
 rust_os := target/$(target)/debug/libkaos.a
-rust_source_files := $(wildcard src/*.rs) 
+rust_source_files := $(wildcard src/memory/paging/*.rs) $(wildcard src/memory/*.rs) $(wildcard src/*.rs)
 cargo_cfg := Cargo.toml
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso cargo
 
 all: $(iso)
 
