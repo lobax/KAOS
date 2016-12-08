@@ -8,7 +8,7 @@ extern crate multiboot2;
 #[macro_use]
 extern crate bitflags;
 extern crate x86;
-extern crate bump_allocator;
+extern crate hole_list_allocator;
 extern crate alloc;
 #[macro_use]
 extern crate collections; 
@@ -23,13 +23,8 @@ use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_adress: usize) {
-
-    let title = b"8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
-    let color_byte = 0x0c; // Light red foreground, black background
-
-    // Home made print function
-    print(title, &color_byte, 10, 26); 
-
+    
+    print_logo(); 
     enable_nxe_bit();
     enable_write_protect_bit();
     
@@ -39,7 +34,16 @@ pub extern fn rust_main(multiboot_information_adress: usize) {
     memory::init(boot_info);
 
     use alloc::boxed::Box;
-    let heap_test = Box::new(42);
+    let mut heap_test = Box::new(42);
+    *heap_test -= 15;
+    let heap_test2 = Box::new("hello");
+    println!("{:?} {:?}", heap_test, heap_test2);
+
+    let mut vec_test = vec![1,2,3,4,5,6,7];
+    vec_test[3] = 42;
+    for i in &vec_test {
+            print!("{} ", i);
+    }
 
     println!("It did not crash!"); 
 
@@ -63,6 +67,19 @@ fn enable_write_protect_bit() {
     unsafe { cr0_write(cr0() | wp_bit) };
 }
     
+
+fn print_logo() {
+    // Set font color 
+    vga_buffer::set_text_color(vga_buffer::Color::LightRed); 
+
+    println!(""); 
+    let title = "8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
+    println!("{}", title);  
+
+    // Reset font color
+    vga_buffer::set_text_color(vga_buffer::Color::LightGreen); 
+
+}
 
 fn print(string: &[u8], color: &u8, mut row: u64, column: u64) {
     let mut col = column; 

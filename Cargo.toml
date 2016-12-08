@@ -17,8 +17,8 @@ bitflags = "0.7.0"
 version = "0.7.1"
 default-features = false
 
-[dependencies.bump_allocator]
-path = "libs/bump_allocator"
+[dependencies.hole_list_allocator]
+path = "libs/hole_list_allocator"
 
 [workspace]
 
