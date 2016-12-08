@@ -1,5 +1,4 @@
-#![feature(lang_items)]
-#![feature(const_fn, unique)]
+#![feature(lang_items, const_fn, unique, alloc, collections)]
 #![no_std]
 
 extern crate rlibc;
@@ -9,6 +8,12 @@ extern crate multiboot2;
 #[macro_use]
 extern crate bitflags;
 extern crate x86;
+extern crate bump_allocator;
+extern crate alloc;
+#[macro_use]
+extern crate collections; 
+#[macro_use]
+extern crate once;
 
 #[macro_use]
 mod vga_buffer;
@@ -18,44 +23,45 @@ use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_adress: usize) {
+
     let title = b"8  dP    db    .d88b. .d88b.\n8wdP    dPYb   8P  Y8 YPwww.\n88Yb   dPwwYb  8b  d8     d8\n8  Yb dP    Yb `Y88P' `Y88P'"; 
     let color_byte = 0x0c; // Light red foreground, black background
 
     // Home made print function
     print(title, &color_byte, 10, 26); 
+
+    enable_nxe_bit();
+    enable_write_protect_bit();
     
     let boot_info = unsafe { multiboot2::load(multiboot_information_adress) }; 
-    let memory_map_tag = boot_info.memory_map_tag()
-             .expect("Memory map tag required"); 
 
+    // set up guard page and map the heap pages
+    memory::init(boot_info);
 
-    let elf_sections_tag = boot_info.elf_sections_tag()
-        .expect("Elf-sections tag required"); 
+    use alloc::boxed::Box;
+    let heap_test = Box::new(42);
 
-    let kernel_start = elf_sections_tag.sections().map(|s| s.addr)
-            .min().unwrap();
-    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size)
-            .max().unwrap(); 
-
-    let multiboot_start = multiboot_information_adress; 
-    let multiboot_end = multiboot_start + (boot_info.total_size as usize); 
-
-    println!("Kernel start adress: 0x{:x}, end adress: 0x{:x}",
-             kernel_start, kernel_end);
-    println!("Multiboot start adress: 0x{:x}, end adress: 0x{:x}",
-             multiboot_start, multiboot_end);
-
-    let mut frame_allocator = memory::AreaFrameAllocator::new(
-        kernel_start as usize, kernel_end as usize, multiboot_start, 
-        multiboot_end, memory_map_tag.memory_areas()); 
-    memory::test_paging(&mut frame_allocator); 
-
+    println!("It did not crash!"); 
 
     loop{}
 }
 
+fn enable_nxe_bit() { 
+    use x86::msr::{IA32_EFER, rdmsr, wrmsr}; 
 
+    let nxe_bit = 1 << 11; 
+    unsafe { 
+        let efer = rdmsr(IA32_EFER); 
+        wrmsr(IA32_EFER, efer | nxe_bit); 
+    }
+}
 
+fn enable_write_protect_bit() { 
+    use x86::controlregs::{cr0, cr0_write}; 
+
+    let wp_bit = 1 << 16; 
+    unsafe { cr0_write(cr0() | wp_bit) };
+}
     
 
 fn print(string: &[u8], color: &u8, mut row: u64, column: u64) {

@@ -3,24 +3,52 @@ ENTRY(start)
 SECTIONS { 
     . = 1M;
 
-    .boot : 
+    .rodata : 
     { 
         /* ensure the multiboot header is at the beginning of the file*/
         KEEP(*(.multiboot_header))
+        *(.rodata .rodata.*)
+        . = ALIGN(4K);
     } 
 
     .text : 
     { 
         *(.text .text.*)
+        . = ALIGN(4k);
     }
 
-    .rodata : 
+    .data : 
     {
-        *(.rodata .rodata.*)
+        *(.data .data.*)
+        . = ALIGN(4k);
     }
 
-    .data.rel.ro :
+    .bss : 
     {
+        *(.bss .bss.*)
+        . = ALIGN(4k);
+    }
+    
+    .got : 
+    {
+        *(.got)
+        . = ALIGN(4k);
+    }
+
+    .got.plt : 
+    {
+        *(.got.plt)
+        . = ALIGN(4k);
+    }
+
+    .data.rel.ro : ALIGN(4K) {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
+        . = ALIGN(4k);
+    }
+
+    .gcc_except_table : 
+    {
+        *(.gcc_except_table)
+        . = ALIGN(4k);
     }
 }
